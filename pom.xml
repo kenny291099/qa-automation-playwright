@@ -143,7 +143,7 @@
                 <executions>
                     <execution>
                         <id>clean-allure-results</id>
-                        <phase>initialize</phase>
+                        <phase>clean</phase>
                         <goals>
                             <goal>clean</goal>
                         </goals>
