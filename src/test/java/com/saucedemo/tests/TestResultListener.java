@@ -36,14 +36,16 @@ public class TestResultListener implements TestWatcher {
         String testName = getTestName(context);
         logger.error("❌ Test FAILED: {} - Error: {}", testName, cause.getMessage());
         
-        // Take screenshot on failure
-        String screenshotName = testName + "_failure_" + getTimestamp();
-        BrowserManager.takeScreenshot(screenshotName);
-        attachScreenshotToAllure(screenshotName, "Failure Screenshot");
+        // Attach existing screenshots for this test (captured by BaseTest)
+        attachExistingScreenshots(testName);
         
         // Save trace on failure
-        String traceName = testName + "_failure_" + getTimestamp();
-        BrowserManager.saveTrace(traceName);
+        try {
+            String traceName = testName + "_failure_" + getTimestamp();
+            BrowserManager.saveTrace(traceName);
+        } catch (Exception e) {
+            logger.warn("Could not save trace: {}", e.getMessage());
+        }
         
         // Attach error details to Allure
         Allure.addAttachment("Error Details", "text/plain", 
@@ -103,5 +105,39 @@ public class TestResultListener implements TestWatcher {
 
     private boolean shouldTakeScreenshotOnSuccess() {
         return System.getProperty("screenshot.mode", "ON_FAILURE").equalsIgnoreCase("ALWAYS");
+    }
+    
+    private void attachExistingScreenshots(String testName) {
+        try {
+            Path screenshotsDir = Paths.get("test-results/screenshots");
+            if (Files.exists(screenshotsDir)) {
+                logger.info("Looking for screenshots for test: {}", testName);
+                
+                // Extract class name from testName (e.g., "QuickScreenshotDemo.QUICK DEMO: ..." -> "QuickScreenshotDemo")
+                String className = testName.split("\\.")[0];
+                
+                Files.list(screenshotsDir)
+                    .filter(path -> {
+                        String filename = path.getFileName().toString();
+                        logger.info("Checking screenshot file: {}", filename);
+                        // Match files that start with the class name and contain "DEMO"
+                        return filename.startsWith(className) && filename.contains("DEMO");
+                    })
+                    .forEach(path -> {
+                        try {
+                            byte[] screenshot = Files.readAllBytes(path);
+                            Allure.addAttachment("Failure Screenshot", "image/png", 
+                                new ByteArrayInputStream(screenshot), "png");
+                            logger.info("✅ Screenshot attached to Allure: {}", path.getFileName());
+                        } catch (Exception e) {
+                            logger.error("Failed to attach screenshot: {}", e.getMessage());
+                        }
+                    });
+            } else {
+                logger.warn("Screenshots directory does not exist: {}", screenshotsDir);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to search for existing screenshots: {}", e.getMessage());
+        }
     }
 }

@@ -16,8 +16,6 @@ After working with numerous test automation challenges across different teams an
 - **Accessibility** - Clear patterns that team members can easily understand and contribute to
 - **Production Readiness** - Battle-tested approaches used in real development environments
 
-> **For Hiring Managers**: This portfolio demonstrates my practical approach to test automation engineering and the value I bring to development teams.
-
 ## Key Framework Features
 
 - **Playwright + Java 17** - Modern browser automation with excellent cross-platform support
@@ -31,8 +29,6 @@ After working with numerous test automation challenges across different teams an
 - **Intelligent Logging** - Structured logging with appropriate detail levels for debugging
 - **Flexible Configuration** - Environment-specific settings without code modifications
 - **Framework Reusability** - Easily adaptable architecture for different web applications
-
-> **Note**: The framework includes a complete implementation example using SauceDemo, demonstrating how to adapt the structure for any web application.
 
 ## Technology Stack & Professional Expertise
 
@@ -107,11 +103,9 @@ Follow these steps to set up and run the test automation framework:
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/kenny291099/qa-automation-playwright.git
 cd qa-automation-playwright
 ```
-
-Replace `<your-repository-url>` with your actual repository URL.
 
 ### 2. Install Dependencies
 
@@ -235,8 +229,6 @@ The framework includes comprehensive test scenarios that demonstrate real-world 
 - **Checkout Process Validation** - Payment flow and order confirmation
 - **Price Consistency Verification** - Cost calculation accuracy throughout the flow
 - **Order Abandonment Scenarios** - Cart abandonment and recovery workflows
-
-> **Framework Adaptability**: While these examples demonstrate e-commerce patterns, the framework architecture supports any web application domain. The page object model enables easy adaptation for different business flows and user interactions.
 
 ## CI/CD Integration
 
@@ -424,10 +416,9 @@ This project demonstrates my approach to quality assurance engineering and the p
 I'm passionate about quality assurance engineering and welcome opportunities to discuss testing strategies, automation frameworks, and best practices.
 
 ### Professional Network
-- **LinkedIn**: [Connect with me](https://linkedin.com/in/your-profile) for professional discussions and industry insights
-- **GitHub**: [View my projects](https://github.com/your-username) for additional code examples and contributions
-- **Email**: your.email@example.com for direct communication and collaboration opportunities
-- **Portfolio**: [Complete portfolio](https://your-portfolio-site.com) showcasing additional projects and achievements
+- **LinkedIn**: [Connect with me](https://www.linkedin.com/in/kenny-wirianto/) for professional discussions and industry insights
+- **GitHub**: [View my projects](https://github.com/kenny291099) for additional code examples and contributions
+- **Email**: kenny291099@gmail.com for direct communication and collaboration opportunities
 
 ### Professional Interests
 I'm actively interested in opportunities involving:
