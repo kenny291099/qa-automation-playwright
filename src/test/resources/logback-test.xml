@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Pretty Console Appender with Colors and Icons -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%boldBlue(%d{HH:mm:ss.SSS}) %highlight(%-5level) %boldCyan([%15.15thread]) %boldWhite(%logger{30}): %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Clean Test Console Appender (for test output) -->
+    <appender name="TEST_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%boldGreen(%d{HH:mm:ss}) %boldWhite(│) %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender with Fixed Rolling Policy -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/test.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/test.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Test Result Logger (for clean test output) -->
+    <logger name="com.saucedemo.tests" level="INFO" additivity="false">
+        <appender-ref ref="TEST_CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Page Object Model Logger -->
+    <logger name="com.saucedemo.pages" level="INFO" additivity="false">
+        <appender-ref ref="TEST_CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Utils Logger -->
+    <logger name="com.saucedemo.utils" level="INFO" additivity="false">
+        <appender-ref ref="TEST_CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Test Result Listener -->
+    <logger name="com.saucedemo.tests.TestResultListener" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Suppress noisy external libraries -->
+    <logger name="com.microsoft.playwright" level="WARN" additivity="false">
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <logger name="org.junit" level="WARN" additivity="false">
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <!-- Root logger with reduced verbosity -->
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

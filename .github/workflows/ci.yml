@@ -1,0 +1,195 @@
+name: Playwright Tests CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to run tests on'
+        required: false
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+      headless:
+        description: 'Run tests in headless mode'
+        required: false
+        default: true
+        type: boolean
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - login
+          - inventory
+          - e2e
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Install Playwright
+        run: mvn compile exec:java -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install --with-deps"
+
+      - name: Create test results directories
+        run: |
+          mkdir -p test-results/screenshots
+          mkdir -p test-results/videos
+          mkdir -p test-results/traces
+          mkdir -p logs
+
+      - name: Run tests
+        run: |
+          if [ "${{ github.event.inputs.test_suite }}" = "login" ]; then
+            mvn test -Dtest=LoginTest -Dbrowser=${{ matrix.browser }} -Dheadless=${{ github.event.inputs.headless || 'true' }}
+          elif [ "${{ github.event.inputs.test_suite }}" = "inventory" ]; then
+            mvn test -Dtest=InventoryTest -Dbrowser=${{ matrix.browser }} -Dheadless=${{ github.event.inputs.headless || 'true' }}
+          elif [ "${{ github.event.inputs.test_suite }}" = "e2e" ]; then
+            mvn test -Dtest=E2ETest -Dbrowser=${{ matrix.browser }} -Dheadless=${{ github.event.inputs.headless || 'true' }}
+          else
+            mvn test -Dbrowser=${{ matrix.browser }} -Dheadless=${{ github.event.inputs.headless || 'true' }}
+          fi
+        env:
+          BROWSER: ${{ github.event.inputs.browser || matrix.browser }}
+          HEADLESS: ${{ github.event.inputs.headless || 'true' }}
+
+      - name: Generate Allure Report
+        if: always()
+        run: mvn allure:report
+
+      - name: Upload Allure Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-results-${{ matrix.browser }}
+          path: target/allure-results/
+          retention-days: 30
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-report-${{ matrix.browser }}
+          path: target/site/allure-maven-plugin/
+          retention-days: 30
+
+      - name: Upload Test Screenshots
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots-${{ matrix.browser }}
+          path: test-results/screenshots/
+          retention-days: 30
+
+      - name: Upload Test Videos
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: videos-${{ matrix.browser }}
+          path: test-results/videos/
+          retention-days: 30
+
+      - name: Upload Test Traces
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: traces-${{ matrix.browser }}
+          path: test-results/traces/
+          retention-days: 30
+
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: logs-${{ matrix.browser }}
+          path: logs/
+          retention-days: 30
+
+  publish-report:
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Merge Allure Results
+        run: |
+          mkdir -p merged-results
+          find . -name "allure-results-*" -type d | while read dir; do
+            cp -r "$dir"/* merged-results/ 2>/dev/null || true
+          done
+
+      - name: Generate Combined Allure Report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: merged-results
+          allure_report: allure-report
+          gh_pages: gh-pages
+          allure_history: allure-history
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: allure-history
+          destination_dir: allure-report
+
+  notify:
+    needs: [test, publish-report]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Test Results Summary
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Browser | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.test.result }}" = "success" ]; then
+            echo "| All Browsers | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Some Browsers | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View Detailed Report](https://your-username.github.io/qa-automation-playwright/allure-report/)" >> $GITHUB_STEP_SUMMARY
