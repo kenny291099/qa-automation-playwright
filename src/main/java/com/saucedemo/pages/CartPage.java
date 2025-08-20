@@ -16,10 +16,6 @@ public class CartPage extends BasePage {
     private final Locator cartItems = page.locator(".cart_item");
     private final Locator cartItemNames = page.locator(".inventory_item_name");
     private final Locator cartItemPrices = page.locator(".inventory_item_price");
-    private final Locator cartItemDescriptions = page.locator(".inventory_item_desc");
-    private final Locator cartItemQuantities = page.locator(".cart_quantity");
-    private final Locator removeButtons = page.locator("button[id*='remove']");
-    private final Locator emptyCartMessage = page.locator(".cart_item");
 
     // Header elements
     private final Locator shoppingCartBadge = page.locator(".shopping_cart_badge");

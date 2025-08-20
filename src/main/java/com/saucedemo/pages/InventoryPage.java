@@ -21,13 +21,8 @@ public class InventoryPage extends BasePage {
     private final Locator inventoryItems = page.locator(".inventory_item");
     private final Locator inventoryItemNames = page.locator(".inventory_item_name");
     private final Locator inventoryItemPrices = page.locator(".inventory_item_price");
-    private final Locator inventoryItemDescriptions = page.locator(".inventory_item_desc");
-    private final Locator addToCartButtons = page.locator("button[id*='add-to-cart']");
-    private final Locator removeButtons = page.locator("button[id*='remove']");
 
     // Menu elements
-    private final Locator allItemsLink = page.locator("#inventory_sidebar_link");
-    private final Locator aboutLink = page.locator("#about_sidebar_link");
     private final Locator logoutLink = page.locator("#logout_sidebar_link");
     private final Locator resetAppStateLink = page.locator("#reset_sidebar_link");
     private final Locator closeMenuButton = page.locator("#react-burger-cross-btn");
