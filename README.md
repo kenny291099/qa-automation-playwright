@@ -438,33 +438,6 @@ I specialize in building testing solutions that enhance team confidence, improve
 - Environments where I can make meaningful impact on development processes
 - Companies investing in robust engineering practices and continuous improvement
 
-## Contributing to the Framework
-
-Contributions are welcome and appreciated. Whether you've identified a bug, have suggestions for improvements, or want to add new features:
-
-### Contribution Process
-
-1. **Fork the repository** - Create your own copy for development
-2. **Create a feature branch** - `git checkout -b feature/your-feature-name`
-3. **Implement changes** - Follow existing code patterns and conventions
-4. **Test thoroughly** - Ensure all tests pass with `mvn test`
-5. **Submit pull request** - Provide clear description of changes and rationale
-
-### Contribution Opportunities
-
-- **Additional page object examples** for different application types and patterns
-- **Extended test scenarios** demonstrating advanced testing techniques
-- **Reporting enhancements** and custom Allure report configurations
-- **Error handling improvements** and resilience features
-- **Documentation updates** and clarifications
-- **Performance optimizations** and execution efficiency improvements
-
-**Questions or suggestions?** Please open an issue to discuss potential contributions and coordinate development efforts.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ---
 
 <div align="center">

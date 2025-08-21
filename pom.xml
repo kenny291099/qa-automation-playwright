@@ -107,6 +107,11 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.version}</version>
                 <configuration>
+                    <!-- Force single JVM execution - no forking at all -->
+                    <forkCount>0</forkCount>
+                    <reuseForks>false</reuseForks>
+                    <threadCount>1</threadCount>
+                    <parallel>none</parallel>
                     <argLine>
                         -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
                     </argLine>
@@ -115,7 +120,14 @@
                             <name>allure.results.directory</name>
                             <value>${project.build.directory}/allure-results</value>
                         </property>
+                        <property>
+                            <name>maven.surefire.debug</name>
+                            <value>true</value>
+                        </property>
                     </systemProperties>
+                    <!-- Explicit JVM settings -->
+                    <useSystemClassLoader>true</useSystemClassLoader>
+                    <useManifestOnlyJar>false</useManifestOnlyJar>
                 </configuration>
                 <dependencies>
                     <dependency>
@@ -160,6 +172,13 @@
                                     <directory>${project.build.directory}/site/allure-maven-plugin</directory>
                                     <includes>
                                         <include>**/*</include>
+                                    </includes>
+                                    <followSymlinks>false</followSymlinks>
+                                </fileset>
+                                <fileset>
+                                    <directory>${project.build.directory}</directory>
+                                    <includes>
+                                        <include>.cleanup-performed</include>
                                     </includes>
                                     <followSymlinks>false</followSymlinks>
                                 </fileset>

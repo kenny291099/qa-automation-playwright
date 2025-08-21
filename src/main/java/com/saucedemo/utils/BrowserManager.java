@@ -10,6 +10,10 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class BrowserManager {
     private static final Logger logger = LoggerFactory.getLogger(BrowserManager.class);
@@ -176,35 +180,134 @@ public class BrowserManager {
     public static void closePage() {
         Page page = pageThreadLocal.get();
         if (page != null) {
-            page.close();
-            pageThreadLocal.remove();
-            logger.info("Page closed");
+            try {
+                if (!page.isClosed()) {
+                    page.close();
+                }
+                logger.info("Page closed");
+            } catch (Exception e) {
+                logger.warn("Error closing page: {}", e.getMessage());
+            } finally {
+                pageThreadLocal.remove();
+            }
         }
     }
 
     public static void closeContext() {
         BrowserContext context = contextThreadLocal.get();
         if (context != null) {
-            context.close();
-            contextThreadLocal.remove();
-            logger.info("Browser context closed");
+            try {
+                // Stop tracing first if enabled
+                if (getTraceMode()) {
+                    try {
+                        context.tracing().stop();
+                    } catch (Exception e) {
+                        logger.debug("Error stopping trace: {}", e.getMessage());
+                    }
+                }
+                context.close();
+                logger.info("Browser context closed");
+            } catch (Exception e) {
+                logger.warn("Error closing browser context: {}", e.getMessage());
+            } finally {
+                contextThreadLocal.remove();
+            }
         }
     }
 
     public static void closeBrowser() {
         Browser browser = browserThreadLocal.get();
         if (browser != null) {
-            browser.close();
-            browserThreadLocal.remove();
-            logger.info("Browser closed");
+            try {
+                if (browser.isConnected()) {
+                    browser.close();
+                }
+                logger.info("Browser closed");
+            } catch (Exception e) {
+                logger.warn("Error closing browser: {}", e.getMessage());
+            } finally {
+                browserThreadLocal.remove();
+            }
         }
     }
 
     public static void closePlaywright() {
         if (playwright != null) {
-            playwright.close();
-            playwright = null;
-            logger.info("Playwright closed");
+            try {
+                playwright.close();
+                logger.info("Playwright closed");
+            } catch (Exception e) {
+                logger.warn("Error closing Playwright: {}", e.getMessage());
+            } finally {
+                playwright = null;
+            }
+        }
+    }
+
+    /**
+     * Force cleanup all browser resources with error isolation
+     * Each cleanup step is isolated to prevent cascading failures
+     */
+    public static void forceCleanup() {
+        logger.debug("Starting force cleanup of browser resources");
+        
+        // Clean up page
+        try {
+            closePage();
+        } catch (Exception e) {
+            logger.warn("Force cleanup - page error: {}", e.getMessage());
+            pageThreadLocal.remove();
+        }
+        
+        // Clean up context
+        try {
+            closeContext();
+        } catch (Exception e) {
+            logger.warn("Force cleanup - context error: {}", e.getMessage());
+            contextThreadLocal.remove();
+        }
+        
+        // Clean up browser
+        try {
+            closeBrowser();
+        } catch (Exception e) {
+            logger.warn("Force cleanup - browser error: {}", e.getMessage());
+            browserThreadLocal.remove();
+        }
+        
+        logger.debug("Force cleanup completed");
+    }
+
+    /**
+     * Force cleanup with timeout protection to prevent hanging
+     * Uses ExecutorService to run cleanup operations with timeout
+     */
+    public static void forceCleanupWithTimeout() {
+        logger.debug("Starting force cleanup with timeout protection");
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        
+        try {
+            Future<?> future = executor.submit(() -> {
+                try {
+                    forceCleanup();
+                } catch (Exception e) {
+                    logger.warn("Exception during timeout cleanup: {}", e.getMessage());
+                }
+            });
+            
+            // Wait for cleanup to complete with 5 second timeout
+            future.get(5, TimeUnit.SECONDS);
+            logger.debug("Timeout cleanup completed successfully");
+            
+        } catch (Exception e) {
+            logger.warn("Cleanup timed out or failed: {}", e.getMessage());
+            // Force ThreadLocal cleanup even if timeout occurred
+            pageThreadLocal.remove();
+            contextThreadLocal.remove();
+            browserThreadLocal.remove();
+            logger.debug("ThreadLocal variables forcefully cleared");
+        } finally {
+            executor.shutdownNow();
         }
     }
 
