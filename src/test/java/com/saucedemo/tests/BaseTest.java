@@ -39,6 +39,10 @@ public abstract class BaseTest {
     @BeforeEach
     void setUp() {
         logger.info("Starting test: {}", getTestName());
+        
+        // Ensure Playwright is initialized (in case it was closed in previous test teardown)
+        BrowserManager.initializePlaywright();
+        
         BrowserManager.createBrowser();
         BrowserManager.createContext();
         BrowserManager.createPage();
@@ -65,18 +69,37 @@ public abstract class BaseTest {
             logger.warn("Could not take screenshot in tearDown: {}", e.getMessage());
         }
         
-        // Use force cleanup with timeout to ensure proper resource cleanup and prevent hanging
+        // Enhanced cleanup: Ensure complete browser closure after each test
+        // This allows running entire test classes in visible mode without hanging
         try {
+            logger.debug("Starting enhanced browser cleanup for test: {}", testInfo.getDisplayName());
+            
+            // Step 1: Force cleanup with timeout
             BrowserManager.forceCleanupWithTimeout();
+            
+            // Step 2: Ensure Playwright instance is ready for next test
+            // Close and reinitialize Playwright to prevent browser process accumulation
+            BrowserManager.closePlaywright();
+            
+            logger.info("✅ Browser completely closed for test: {}", testInfo.getDisplayName());
+            
         } catch (Exception e) {
-            logger.error("Error during browser cleanup: {}", e.getMessage());
+            logger.error("Error during enhanced browser cleanup: {}", e.getMessage());
+            // Force cleanup even if there's an error
+            try {
+                BrowserManager.closePlaywright();
+            } catch (Exception ex) {
+                logger.warn("Final cleanup attempt failed: {}", ex.getMessage());
+            }
         }
     }
 
     @AfterAll
     static void tearDownAll() {
         logger.info("Tearing down test environment");
-        BrowserManager.closePlaywright();
+        
+        // No need to close Playwright here - it's closed after each individual test
+        // This ensures better isolation and prevents browser process accumulation
         
         // Clean screenshots after test run if configured
         if (shouldCleanScreenshotsAfterRun()) {
@@ -87,7 +110,7 @@ public abstract class BaseTest {
         // Only the first test class in a Maven run cleans previous results
         // DO NOT delete cleanup marker file here - let Maven clean handle it
         
-        logger.info("Test class '{}' completed - Allure results preserved for final report", getTestClassName());
+        logger.info("Test class '{}' completed - Enhanced cleanup ensures no browser processes remain", getTestClassName());
     }
 
     protected String getTestName() {

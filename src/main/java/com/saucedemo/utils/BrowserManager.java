@@ -36,7 +36,8 @@ public class BrowserManager {
         String browserName = System.getProperty("browser", config.browser());
         BrowserType browserType = switch (browserName.toLowerCase()) {
             case "firefox" -> playwright.firefox();
-            case "webkit" -> playwright.webkit();
+            case "webkit", "safari" -> playwright.webkit();
+            case "chrome", "chromium" -> playwright.chromium();
             default -> playwright.chromium();
         };
 
@@ -52,45 +53,76 @@ public class BrowserManager {
                 .setHeadless(headlessMode)
                 .setSlowMo(slowMotion);
         
-        // Use Google Chrome for visible mode on macOS (better compatibility)
-        // Keep Chromium for headless mode (faster, lighter)
-        if (browserName.toLowerCase().equals("chromium") && 
-            !headlessMode && 
-            System.getProperty("os.name").toLowerCase().contains("mac")) {
+        // Browser-specific optimizations for visible mode on macOS
+        if (!headlessMode && System.getProperty("os.name").toLowerCase().contains("mac")) {
             
-            String chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-            if (java.nio.file.Files.exists(Paths.get(chromePath))) {
-                options.setExecutablePath(Paths.get(chromePath));
-                logger.info("Using Google Chrome for visible mode on macOS (better compatibility)");
-            } else {
-                logger.warn("Google Chrome not found at {}. Falling back to Chromium.", chromePath);
+            // Use Google Chrome for Chromium/Chrome in visible mode (better compatibility)
+            if (browserName.toLowerCase().equals("chromium") || browserName.toLowerCase().equals("chrome")) {
+                String chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+                if (java.nio.file.Files.exists(Paths.get(chromePath))) {
+                    options.setExecutablePath(Paths.get(chromePath));
+                    logger.info("Using Google Chrome for visible mode on macOS (better compatibility)");
+                } else {
+                    logger.warn("Google Chrome not found at {}. Falling back to Chromium.", chromePath);
+                }
+            }
+            
+            // For WebKit/Safari, don't use Safari executable - use Playwright's WebKit engine
+            // Safari executable doesn't work well with Playwright automation
+            else if (browserName.toLowerCase().equals("webkit") || browserName.toLowerCase().equals("safari")) {
+                logger.info("Using Playwright WebKit engine (Safari-compatible) for visible mode");
             }
         }
         
         // Add macOS specific fixes for visible mode (headless=false)
         if (!headlessMode && System.getProperty("os.name").toLowerCase().contains("mac")) {
-            List<String> args = new ArrayList<>(Arrays.asList(
-                "--no-sandbox",
-                "--disable-dev-shm-usage", 
-                "--disable-web-security",
-                "--disable-features=VizDisplayCompositor",
-                "--disable-background-timer-throttling",
-                "--disable-backgrounding-occluded-windows",
-                "--disable-renderer-backgrounding",
-                "--disable-field-trial-config",
-                "--disable-ipc-flooding-protection",
-                "--no-first-run",
-                "--no-default-browser-check", 
-                "--disable-default-apps",
-                "--disable-popup-blocking",
-                "--disable-translate",
-                "--disable-extensions",
-                "--disable-sync",
-                "--disable-background-mode",
-                "--remote-debugging-port=9222"
-            ));
-            options.setArgs(args);
-            logger.info("Applied enhanced macOS compatibility arguments for visible mode");
+            List<String> args = new ArrayList<>();
+            
+            // Browser-specific arguments for stability
+            if (browserName.toLowerCase().equals("chromium") || browserName.toLowerCase().equals("chrome")) {
+                args.addAll(Arrays.asList(
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage", 
+                    "--disable-web-security",
+                    "--disable-features=VizDisplayCompositor",
+                    "--disable-background-timer-throttling",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-renderer-backgrounding",
+                    "--disable-field-trial-config",
+                    "--disable-ipc-flooding-protection",
+                    "--no-first-run",
+                    "--no-default-browser-check", 
+                    "--disable-default-apps",
+                    "--disable-popup-blocking",
+                    "--disable-translate",
+                    "--disable-extensions",
+                    "--disable-sync",
+                    "--disable-background-mode",
+                    "--remote-debugging-port=9222"
+                ));
+                logger.info("Applied Chrome/Chromium macOS compatibility arguments for visible mode");
+            }
+            else if (browserName.toLowerCase().equals("webkit") || browserName.toLowerCase().equals("safari")) {
+                // Use minimal arguments for WebKit - it's more sensitive to unknown flags
+                args.addAll(Arrays.asList(
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-web-security"
+                ));
+                logger.info("Applied WebKit/Safari minimal compatibility arguments for visible mode");
+            }
+            else {
+                // Firefox or other browsers - minimal args
+                args.addAll(Arrays.asList(
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage"
+                ));
+                logger.info("Applied basic macOS compatibility arguments for visible mode");
+            }
+            
+            if (!args.isEmpty()) {
+                options.setArgs(args);
+            }
         }
         
         Browser browser = browserType.launch(options);
@@ -220,6 +252,17 @@ public class BrowserManager {
         if (browser != null) {
             try {
                 if (browser.isConnected()) {
+                    // Force close all contexts first in visible mode
+                    try {
+                        for (BrowserContext context : browser.contexts()) {
+                            if (!context.equals(contextThreadLocal.get())) {
+                                context.close();
+                            }
+                        }
+                    } catch (Exception e) {
+                        logger.debug("Error closing additional contexts: {}", e.getMessage());
+                    }
+                    
                     browser.close();
                 }
                 logger.info("Browser closed");
@@ -295,17 +338,27 @@ public class BrowserManager {
                 }
             });
             
-            // Wait for cleanup to complete with 5 second timeout
-            future.get(5, TimeUnit.SECONDS);
-            logger.debug("Timeout cleanup completed successfully");
+            // Use shorter timeout for visible browsers, but give WebKit/Safari a bit more time
+            // WebKit can be slower to cleanup than Chromium-based browsers
+            int timeoutSeconds = 5; // Default
+            if (System.getProperty("headless", "true").equals("false")) {
+                String browserName = System.getProperty("browser", "chromium").toLowerCase();
+                if (browserName.equals("webkit") || browserName.equals("safari")) {
+                    timeoutSeconds = 4; // WebKit needs slightly more time
+                } else {
+                    timeoutSeconds = 3; // Chrome/Firefox are faster
+                }
+            }
+            future.get(timeoutSeconds, TimeUnit.SECONDS);
+            logger.debug("Timeout cleanup completed successfully in {}s", timeoutSeconds);
             
         } catch (Exception e) {
-            logger.warn("Cleanup timed out or failed: {}", e.getMessage());
+            logger.warn("Cleanup timed out or failed after timeout: {}", e.getMessage());
             // Force ThreadLocal cleanup even if timeout occurred
             pageThreadLocal.remove();
             contextThreadLocal.remove();
             browserThreadLocal.remove();
-            logger.debug("ThreadLocal variables forcefully cleared");
+            logger.info("ThreadLocal variables forcefully cleared due to timeout");
         } finally {
             executor.shutdownNow();
         }
