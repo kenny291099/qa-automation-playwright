@@ -8,25 +8,27 @@ This repository showcases my learning journey and practical skills in building *
 ---
 
 ## 🚀 Key Features
-- **Playwright + Java 17** – Modern, cross-browser automation  
+- **Playwright + Java 17** – Modern, cross-browser automation with latest optimizations
 - **Page Object Model (POM)** – Clean, maintainable test structure  
-- **Allure Reports** – Rich, visual reporting & analytics  
+- **Allure Reports** – Rich, visual reporting & analytics with multi-class aggregation
 - **CI/CD Ready** – Seamless integration with GitHub Actions, Jenkins, GitLab  
-- **Cross-Browser Support** – Chromium, Firefox, WebKit  
-- **Evidence Capture** – Screenshots, videos, and traces on failures  
+- **Cross-Browser Support** – Chromium, Firefox, WebKit with performance optimizations
+- **Smart Evidence Capture** – Configurable screenshots, videos, and traces
+- **Performance Optimized** – Enhanced JVM settings, G1GC, optimized dependencies
+- **Single JVM Execution** – Ensures proper Allure multi-class reporting  
 
 ---
 
 ## 🛠️ Technologies Used
 
-| Technology        | Key Benefits |
-|-------------------|--------------|
-| **Playwright**    | Superior browser automation, excellent debugging |
-| **Java 17**       | Modern language features, enterprise reliability |
-| **Maven**         | Dependency management and build automation |
-| **JUnit 5**       | Modern testing framework with flexible organization |
-| **Allure**        | Professional reporting with visual insights |
-| **GitHub Actions**| Streamlined CI/CD integration |
+| Technology        | Version | Key Benefits |
+|-------------------|---------|--------------|
+| **Playwright**    | 1.48.0  | Superior browser automation, excellent debugging |
+| **Java 17**       | 17+     | Modern language features, enterprise reliability |
+| **Maven**         | 3.13+   | Optimized dependency management and build automation |
+| **JUnit 5**       | 5.11.0  | Modern testing framework with flexible organization |
+| **Allure**        | 2.29.0  | Professional reporting with visual insights |
+| **GitHub Actions**| Latest  | Streamlined CI/CD integration |
 
 ---
 
@@ -51,47 +53,87 @@ Generate reports:
 mvn allure:serve
 ```
 
-## 🎯 Running Specific Tests
+## 🎯 CLI Commands & Test Execution
 
-### Run a specific test class:
+### Quick Start Commands
 ```bash
+# Fast headless execution (recommended for CI/CD)
+./run-headless.sh
+
+# Headless with video recording (when tests fail)
+./run-with-video.sh
+
+# Visible mode with debugging features
+./run-visible.sh
+```
+
+### Video Recording & Evidence Capture
+```bash
+# Enable video recording for all tests
+mvn test -Dvideo.mode=ON
+
+# Enable video recording with traces on failure
+mvn test -Dvideo.mode=ON -Dtrace.mode=ON_FAILURE
+
+# Screenshots only on failure (default, fastest)
+mvn test -Dvideo.mode=OFF -Dtrace.mode=OFF -Dscreenshot.mode=ON_FAILURE
+
+# Record everything (debugging mode)
+mvn test -Dvideo.mode=ON -Dtrace.mode=ON -Dscreenshot.mode=ALWAYS
+```
+
+### Viewing Test Evidence
+```bash
+# View recorded videos (saved automatically on failures when enabled)
+open test-results/videos/
+
+# View Playwright traces (for deep debugging)
+npx playwright show-trace test-results/traces/LoginTest_failure_20241122_154530.zip
+
+# View screenshots
+open test-results/screenshots/
+
+# Generate and view Allure report
+mvn allure:serve
+```
+
+### Running Specific Tests
+```bash
+# Run a specific test class
 mvn test -Dtest=LoginTest
-mvn test -Dtest=CartPageTest
-mvn test -Dtest=CheckoutPageTest
-```
+mvn test -Dtest=CartPageTest -Dvideo.mode=ON
 
-### Run a specific test method:
-```bash
+# Run a specific test method
 mvn test -Dtest=LoginTest#testSuccessfulLogin
-mvn test -Dtest=InventoryTest#testAddToCart
+mvn test -Dtest=InventoryTest#testAddToCart -Dtrace.mode=ON_FAILURE
 
-# For visible browser testing, always run single methods to avoid multiple browser instances:
-mvn test -Dbrowser=chrome -Dheadless=false -Dtest=LoginTest#testSuccessfulLogin
+# Run tests matching a pattern
+mvn test -Dtest=*Login* -Dvideo.mode=ON
+mvn test -Dtest=*Cart* -Dheadless=false
 ```
 
-### Run tests matching a pattern:
+### Browser Configuration
 ```bash
-# Run all tests with "Login" in the class name
-mvn test -Dtest=*Login*
+# Run with different browsers
+mvn test -Dbrowser=chromium -Dvideo.mode=ON
+mvn test -Dbrowser=firefox -Dtrace.mode=ON_FAILURE
+mvn test -Dbrowser=webkit -Dheadless=false
 
-# Run all tests with "Cart" in the class name  
-mvn test -Dtest=*Cart*
-
-# Run multiple test classes
-mvn test -Dtest=LoginTest,CartPageTest
+# Headless vs visible mode
+mvn test -Dheadless=true -Dvideo.mode=ON    # Fast CI/CD execution
+mvn test -Dheadless=false -Dslow.mo=500     # Debugging with slow motion
 ```
 
-### Run tests by browser:
+### Performance & Debugging
 ```bash
-mvn test -Dbrowser=chrome      # or -Dbrowser=chromium
-mvn test -Dbrowser=firefox
-mvn test -Dbrowser=webkit      # or -Dbrowser=safari (same engine)
-mvn test -Dbrowser=safari      # Uses Safari on macOS, WebKit elsewhere
-```
+# Debug failing tests with full evidence
+mvn test -Dtest=LoginTest -Dheadless=false -Dvideo.mode=ON -Dtrace.mode=ON -Dslow.mo=1000
 
-### Run tests in headless mode:
-```bash
-mvn test -Dheadless=true
+# Fast execution without evidence capture
+mvn test -Dvideo.mode=OFF -Dtrace.mode=OFF -Dscreenshot.mode=OFF
+
+# Memory optimization for large test suites
+mvn test -Xms1g -Xmx3g -Dvideo.mode=OFF
 ```
 
 ## 🌐 **Browser-Specific Notes**
@@ -138,12 +180,12 @@ mvn test -Dheadless=true  # Run all tests
 ---
 
 ## 📖 Documentation
-- [Test Coverage](./docs/test-coverage.md)  
-- [Project Structure](./docs/project-structure.md)  
-- [CI/CD Integration](./docs/ci-cd.md)  
+- [CLI Commands & Evidence Viewing](./docs/cli-commands.md) ⭐  
 - [Configuration](./docs/configuration.md)  
+- [Project Structure](./docs/project-structure.md)  
+- [Test Coverage](./docs/test-coverage.md)  
+- [CI/CD Integration](./docs/ci-cd.md)  
 - [Troubleshooting](./docs/troubleshooting.md)  
-- [Best Practices](./docs/framework-best-practices.md)  
 
 ---
 

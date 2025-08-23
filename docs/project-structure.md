@@ -39,14 +39,17 @@ qa-automation-playwright/
 │           ├── allure.properties  # Allure reporting configuration
 │           ├── config.properties  # Test configuration
 │           └── logback-test.xml   # Logging configuration
-├── target/                        # Maven build artifacts
+├── target/                        # Maven build artifacts and Allure results
 ├── test-results/                  # Generated test artifacts
 │   ├── screenshots/               # Screenshots on failures
-│   ├── videos/                    # Screen recordings (if enabled)
+│   ├── videos/                    # Screen recordings (configurable via CLI)
 │   └── traces/                    # Playwright traces for debugging
-├── pom.xml                        # Maven configuration and dependencies
-├── run-tests.sh                   # Shell script for test execution
-└── README.md                      # Main project documentation
+├── pom.xml                        # Optimized Maven configuration and dependencies
+├── run-headless.sh               # Fast headless execution script
+├── run-with-video.sh             # Headless with video recording script
+├── run-visible.sh                # Visible mode debugging script
+├── run-tests.sh                   # Original shell script for test execution
+└── README.md                      # Comprehensive project documentation
 ```
 
 ## Architecture Overview
@@ -72,7 +75,11 @@ This structure follows industry best practices for test automation frameworks:
 - **Encapsulation**: Page-specific elements and actions
 
 #### **Utility Layer** (`src/main/java/com/saucedemo/utils/`)
-- **BrowserManager**: Browser lifecycle and configuration management
+- **BrowserManager**: Optimized browser lifecycle and configuration management
+  - Thread-safe Playwright initialization
+  - Performance-tuned browser contexts
+  - Smart cleanup with timeout protection
+  - CLI-configurable video/trace capture
 - **Helper Classes**: Common utilities and support functions
 
 #### **Test Layer** (`src/test/java/com/saucedemo/tests/`)
@@ -87,8 +94,23 @@ This structure follows industry best practices for test automation frameworks:
 
 ### **Artifact Management**
 - **allure-report/**: Generated test reports with detailed analytics
-- **test-results/**: Evidence collection (screenshots, videos, traces)
+- **test-results/**: Smart evidence collection (screenshots, videos, traces)
+  - Videos: CLI-configurable (OFF/ON_FAILURE/ON)
+  - Traces: Saved on failure for deep debugging
+  - Screenshots: Captured on failure by default
 - **logs/**: Execution logs for debugging and monitoring
-- **target/**: Maven build artifacts and compiled classes
+- **target/**: Maven build artifacts, compiled classes, and Allure results
 
-This structure promotes **scalability**, **maintainability**, and **collaboration** in test automation development.
+### **Performance Optimizations**
+- **Single JVM Execution**: Ensures proper Allure multi-class reporting
+- **Enhanced JVM Settings**: G1GC, optimized heap (512MB-2GB)
+- **Updated Dependencies**: Latest Playwright 1.48.0, JUnit 5.11.0, Allure 2.29.0
+- **Browser Context Optimization**: Performance-tuned settings, smart resource blocking
+- **Logging Optimization**: Reduced external library verbosity
+
+### **Convenience Scripts**
+- **./run-headless.sh**: Fast execution for CI/CD
+- **./run-with-video.sh**: Headless with video recording on failure
+- **./run-visible.sh**: Visible mode with debugging features
+
+This structure promotes **scalability**, **maintainability**, **performance**, and **collaboration** in modern test automation development.

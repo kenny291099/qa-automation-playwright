@@ -1,6 +1,14 @@
 # ⚙️ Configuration
 
-This document explains how to configure the test automation framework for different environments and execution scenarios.
+This document explains how to configure the optimized Playwright test automation framework for different environments and execution scenarios.
+
+## Recent Optimizations
+
+- **Performance**: Updated to Playwright 1.48.0, JUnit 5.11.0, Allure 2.29.0
+- **JVM Optimization**: Enhanced memory settings (512MB-2GB heap), G1GC
+- **Single JVM Execution**: Ensures proper Allure multi-class reporting
+- **Smart Evidence**: CLI-configurable video/trace capture
+- **Browser Optimization**: Performance-tuned context settings
 
 ## Configuration Files
 
@@ -91,14 +99,20 @@ mvn test -Dslow.mo=1000
 
 ### Evidence Collection Overrides
 ```bash
-# Always capture screenshots
-mvn test -Dscreenshot.mode=ALWAYS
+# Enable video recording on failure (recommended)
+mvn test -Dvideo.mode=ON_FAILURE
 
-# Enable video recording
-mvn test -Dvideo.mode=ALWAYS
+# Enable video recording for all tests
+mvn test -Dvideo.mode=ON
 
-# Capture all evidence
-mvn test -Dscreenshot.mode=ALWAYS -Dvideo.mode=ALWAYS -Dtrace.mode=ALWAYS
+# Enable traces on failure for deep debugging
+mvn test -Dtrace.mode=ON_FAILURE
+
+# Debug failing tests with full evidence
+mvn test -Dvideo.mode=ON -Dtrace.mode=ON_FAILURE -Dscreenshot.mode=ON_FAILURE
+
+# View Playwright traces after test
+npx playwright show-trace test-results/traces/TestName_failure_timestamp.zip
 ```
 
 ### Environment-Specific Overrides
@@ -156,12 +170,16 @@ mvn test \
 
 ### CI/CD Environment
 ```bash
+# Optimized for CI/CD with evidence collection
 mvn test \
   -Dheadless=true \
-  -Dparallel.workers=3 \
   -Dvideo.mode=ON_FAILURE \
-  -Dscreenshot.mode=ON_FAILURE \
-  -Dtrace.mode=ON_FAILURE
+  -Dtrace.mode=ON_FAILURE \
+  -Dscreenshot.mode=ON_FAILURE
+
+# Use convenience scripts
+./run-headless.sh        # Fast execution without videos
+./run-with-video.sh      # Headless with video on failure
 ```
 
 ## Advanced Configuration

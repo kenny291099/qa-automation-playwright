@@ -4,27 +4,33 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.saucedemo</groupId>
+    <groupId>com.kennyplaywright</groupId>
     <artifactId>qa-automation-playwright</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>Sauce Demo Playwright Automation</name>
-    <description>Playwright automation project for Sauce Demo website using Java 17 with Allure reporting</description>
+    <name>Playwright Automation</name>
+    <description>Playwright automation project using Java 17 with Allure reporting</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <playwright.version>1.40.0</playwright.version>
-        <junit.version>5.10.1</junit.version>
-        <allure.version>2.24.0</allure.version>
-        <allure.maven.version>2.12.0</allure.maven.version>
-        <maven.surefire.version>3.2.2</maven.surefire.version>
-        <maven.compiler.version>3.11.0</maven.compiler.version>
-        <slf4j.version>2.0.9</slf4j.version>
-        <logback.version>1.4.11</logback.version>
-        <aspectj.version>1.9.20.1</aspectj.version>
+        
+        <!-- Updated versions for better performance -->
+        <playwright.version>1.48.0</playwright.version>
+        <junit.version>5.11.0</junit.version>
+        <allure.version>2.29.0</allure.version>
+        <allure.maven.version>2.14.0</allure.maven.version>
+        <maven.surefire.version>3.5.0</maven.surefire.version>
+        <maven.compiler.version>3.13.0</maven.compiler.version>
+        <slf4j.version>2.0.16</slf4j.version>
+        <logback.version>1.5.8</logback.version>
+        <aspectj.version>1.9.22.1</aspectj.version>
+        
+        <!-- Performance tuning -->
+        <maven.test.failure.ignore>false</maven.test.failure.ignore>
+        <trimStackTrace>false</trimStackTrace>
     </properties>
 
     <dependencies>
@@ -87,7 +93,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.15.3</version>
+            <version>2.18.0</version>
         </dependency>
     </dependencies>
 
@@ -107,27 +113,42 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.version}</version>
                 <configuration>
-                    <!-- Force single JVM execution - no forking at all -->
+                    <!-- Single JVM execution for Allure multi-class reporting -->
                     <forkCount>0</forkCount>
                     <reuseForks>false</reuseForks>
                     <threadCount>1</threadCount>
                     <parallel>none</parallel>
+                    
+                    <!-- Performance optimizations -->
+                    <trimStackTrace>${trimStackTrace}</trimStackTrace>
+                    <useSystemClassLoader>true</useSystemClassLoader>
+                    <useManifestOnlyJar>false</useManifestOnlyJar>
+                    <failIfNoTests>false</failIfNoTests>
+                    
+                    <!-- Enhanced JVM arguments for better performance -->
                     <argLine>
                         -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+                        -Xms512m -Xmx2g
+                        -XX:+UseG1GC
+                        -XX:+UseStringDeduplication
+                        -Djava.awt.headless=true
+                        -Dfile.encoding=UTF-8
                     </argLine>
+                    
                     <systemProperties>
                         <property>
                             <name>allure.results.directory</name>
                             <value>${project.build.directory}/allure-results</value>
                         </property>
                         <property>
-                            <name>maven.surefire.debug</name>
-                            <value>true</value>
+                            <name>junit.jupiter.execution.parallel.enabled</name>
+                            <value>false</value>
+                        </property>
+                        <property>
+                            <name>junit.jupiter.testinstance.lifecycle.default</name>
+                            <value>per_class</value>
                         </property>
                     </systemProperties>
-                    <!-- Explicit JVM settings -->
-                    <useSystemClassLoader>true</useSystemClassLoader>
-                    <useManifestOnlyJar>false</useManifestOnlyJar>
                 </configuration>
                 <dependencies>
                     <dependency>
@@ -144,7 +165,9 @@
                 <version>${allure.maven.version}</version>
                 <configuration>
                     <reportVersion>${allure.version}</reportVersion>
-                    <allureDownloadUrl>https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.zip</allureDownloadUrl>
+                    <allureDownloadUrl>https://github.com/allure-framework/allure2/releases/download/${allure.version}/allure-${allure.version}.zip</allureDownloadUrl>
+                    <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
+                    <reportDirectory>${project.build.directory}/site/allure-maven-plugin</reportDirectory>
                 </configuration>
             </plugin>
 

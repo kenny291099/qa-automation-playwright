@@ -36,7 +36,11 @@ public class TestResultListener implements TestWatcher {
         String testName = getTestName(context);
         logger.error("❌ Test FAILED: {} - Error: {}", testName, cause.getMessage());
         
-        // Attach existing screenshots for this test (captured by BaseTest)
+        // Take screenshot immediately on failure and attach to Allure
+        // This runs BEFORE BaseTest.tearDown(), so browser should still be available
+        takeAndAttachScreenshot(testName);
+        
+        // Also check for any existing screenshots (for demo tests)
         attachExistingScreenshots(testName);
         
         // Save trace on failure
@@ -81,6 +85,80 @@ public class TestResultListener implements TestWatcher {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
     }
 
+    private void takeAndAttachScreenshot(String testName) {
+        try {
+            // Check if browser/page is still available
+            if (BrowserManager.getPage() != null && !BrowserManager.getPage().isClosed()) {
+                // Primary method: Take screenshot directly and attach to Allure
+                byte[] screenshotBytes = BrowserManager.getPage().screenshot();
+                Allure.addAttachment("Failure Screenshot", "image/png", 
+                    new ByteArrayInputStream(screenshotBytes), "png");
+                logger.info("✅ Failure screenshot captured and attached to Allure");
+                
+                // Optional: Also save to file for debugging
+                try {
+                    String screenshotName = testName.replaceAll("[^a-zA-Z0-9]", "_") + "_failure_" + getTimestamp();
+                    BrowserManager.takeScreenshot(screenshotName);
+                    logger.debug("Screenshot also saved to file: {}", screenshotName);
+                } catch (Exception fileEx) {
+                    logger.debug("Could not save screenshot to file: {}", fileEx.getMessage());
+                }
+                return; // Successfully captured screenshot
+            }
+            
+            logger.warn("Browser/page not available for direct screenshot capture, trying fallback methods");
+            
+        } catch (Exception e) {
+            logger.error("Failed to take failure screenshot: {}", e.getMessage());
+        }
+        
+        // Fallback 1: Try to find recently saved screenshots from BaseTest.tearDown()
+        try {
+            String cleanTestName = testName.replaceAll("[^a-zA-Z0-9]", "_");
+            Path screenshotsDir = Paths.get("test-results/screenshots");
+            
+            if (Files.exists(screenshotsDir)) {
+                // Look for recent screenshots matching this test
+                Optional<Path> recentScreenshot = Files.list(screenshotsDir)
+                    .filter(path -> {
+                        String filename = path.getFileName().toString();
+                        return filename.contains(cleanTestName) && 
+                               filename.endsWith(".png") &&
+                               isRecentFile(path, 10); // within last 10 seconds
+                    })
+                    .findFirst();
+                
+                if (recentScreenshot.isPresent()) {
+                    byte[] screenshot = Files.readAllBytes(recentScreenshot.get());
+                    Allure.addAttachment("Failure Screenshot", "image/png", 
+                        new ByteArrayInputStream(screenshot), "png");
+                    logger.info("✅ Recent screenshot attached to Allure: {}", recentScreenshot.get().getFileName());
+                    return;
+                }
+            }
+        } catch (Exception fallbackEx) {
+            logger.debug("Could not find recent screenshots: {}", fallbackEx.getMessage());
+        }
+        
+        // Fallback 2: Save a text attachment explaining the issue
+        logger.warn("No screenshot could be captured or found for failed test: {}", testName);
+        Allure.addAttachment("Screenshot Status", "text/plain", 
+            "Screenshot could not be captured for this test failure.\n" +
+            "This may be due to browser being closed before screenshot capture.\n" +
+            "Test: " + testName + "\n" +
+            "Timestamp: " + getTimestamp());
+    }
+    
+    private boolean isRecentFile(Path file, int secondsAgo) {
+        try {
+            long fileTime = Files.getLastModifiedTime(file).toMillis();
+            long currentTime = System.currentTimeMillis();
+            return (currentTime - fileTime) < (secondsAgo * 1000);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void attachScreenshotToAllure(String screenshotName, String description) {
         try {
             Path screenshotPath = Paths.get("test-results/screenshots/" + screenshotName + ".png");
@@ -111,33 +189,31 @@ public class TestResultListener implements TestWatcher {
         try {
             Path screenshotsDir = Paths.get("test-results/screenshots");
             if (Files.exists(screenshotsDir)) {
-                logger.info("Looking for screenshots for test: {}", testName);
+                logger.debug("Looking for existing screenshots for test: {}", testName);
                 
-                // Extract class name from testName (e.g., "QuickScreenshotDemo.QUICK DEMO: ..." -> "QuickScreenshotDemo")
+                // Extract class name from testName (e.g., "LoginTest.testSuccessfulLogin()" -> "LoginTest")
                 String className = testName.split("\\.")[0];
                 
                 Files.list(screenshotsDir)
                     .filter(path -> {
                         String filename = path.getFileName().toString();
-                        logger.info("Checking screenshot file: {}", filename);
-                        // Match files that start with the class name and contain "DEMO"
-                        return filename.startsWith(className) && filename.contains("DEMO");
+                        // Look for screenshots that match the class name or contain DEMO
+                        return (filename.startsWith(className) && filename.contains("DEMO")) ||
+                               filename.contains(className);
                     })
                     .forEach(path -> {
                         try {
                             byte[] screenshot = Files.readAllBytes(path);
-                            Allure.addAttachment("Failure Screenshot", "image/png", 
+                            Allure.addAttachment("Additional Screenshot", "image/png", 
                                 new ByteArrayInputStream(screenshot), "png");
-                            logger.info("✅ Screenshot attached to Allure: {}", path.getFileName());
+                            logger.info("✅ Additional screenshot attached: {}", path.getFileName());
                         } catch (Exception e) {
-                            logger.error("Failed to attach screenshot: {}", e.getMessage());
+                            logger.error("Failed to attach additional screenshot: {}", e.getMessage());
                         }
                     });
-            } else {
-                logger.warn("Screenshots directory does not exist: {}", screenshotsDir);
             }
         } catch (Exception e) {
-            logger.error("Failed to search for existing screenshots: {}", e.getMessage());
+            logger.debug("No additional screenshots found or error occurred: {}", e.getMessage());
         }
     }
 }

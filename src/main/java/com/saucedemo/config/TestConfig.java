@@ -25,7 +25,7 @@ public interface TestConfig extends Config {
     int slowMo();
 
     @Key("timeout")
-    @DefaultValue("30000")
+    @DefaultValue("5000")
     int timeout();
 
     @Key("video.mode")

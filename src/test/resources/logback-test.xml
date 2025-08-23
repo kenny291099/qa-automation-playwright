@@ -57,16 +57,26 @@
         <appender-ref ref="FILE"/>
     </logger>
 
-    <!-- Suppress noisy external libraries -->
-    <logger name="com.microsoft.playwright" level="WARN" additivity="false">
+    <!-- Suppress noisy external libraries for better performance -->
+    <logger name="com.microsoft.playwright" level="ERROR" additivity="false">
         <appender-ref ref="FILE"/>
     </logger>
 
     <logger name="org.junit" level="WARN" additivity="false">
         <appender-ref ref="FILE"/>
     </logger>
+    
+    <!-- Maven and build tools -->
+    <logger name="org.apache.maven" level="WARN" additivity="false">
+        <appender-ref ref="FILE"/>
+    </logger>
+    
+    <!-- Allure logging -->
+    <logger name="io.qameta.allure" level="INFO" additivity="false">
+        <appender-ref ref="FILE"/>
+    </logger>
 
-    <!-- Root logger with reduced verbosity -->
+    <!-- Root logger with optimized verbosity -->
     <root level="WARN">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>

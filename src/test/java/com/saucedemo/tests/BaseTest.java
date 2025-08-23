@@ -11,7 +11,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -56,13 +55,13 @@ public abstract class BaseTest {
     void tearDown(TestInfo testInfo) {
         logger.info("Tearing down test: {}", getTestName());
         
-        // Take screenshot before closing if test failed
-        // This runs after test but before TestResultListener
+        // Take screenshot before closing browser for all tests (especially failed ones)
+        // This ensures screenshot is available when TestResultListener tries to attach it
         try {
-            if (BrowserManager.getPage() != null && testInfo.getDisplayName().contains("DEMO")) {
+            if (BrowserManager.getPage() != null && !BrowserManager.getPage().isClosed()) {
                 String screenshotName = getTestName() + "_" + testInfo.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_") + "_" + getTimestamp();
                 BrowserManager.takeScreenshot(screenshotName);
-                logger.info("Screenshot taken: {}", screenshotName);
+                logger.info("Screenshot taken before browser cleanup: {}", screenshotName);
                 // Note: Screenshot file saved for TestResultListener to attach to Allure
             }
         } catch (Exception e) {

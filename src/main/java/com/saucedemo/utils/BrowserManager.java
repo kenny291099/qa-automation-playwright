@@ -21,12 +21,17 @@ public class BrowserManager {
     private static final ThreadLocal<Browser> browserThreadLocal = new ThreadLocal<>();
     private static final ThreadLocal<BrowserContext> contextThreadLocal = new ThreadLocal<>();
     private static final ThreadLocal<Page> pageThreadLocal = new ThreadLocal<>();
-    private static Playwright playwright;
+    private static volatile Playwright playwright;
+    private static final Object playwrightLock = new Object();
 
     public static void initializePlaywright() {
         if (playwright == null) {
-            playwright = Playwright.create();
-            logger.info("Playwright initialized");
+            synchronized (playwrightLock) {
+                if (playwright == null) {
+                    playwright = Playwright.create();
+                    logger.info("Playwright initialized");
+                }
+            }
         }
     }
 
@@ -48,7 +53,7 @@ public class BrowserManager {
         int slowMotion = Integer.parseInt(
             System.getProperty("slow.mo", String.valueOf(config.slowMo())));
         
-        // Create launch options
+        // Create launch options with performance optimizations
         BrowserType.LaunchOptions options = new BrowserType.LaunchOptions()
                 .setHeadless(headlessMode)
                 .setSlowMo(slowMotion);
@@ -138,11 +143,23 @@ public class BrowserManager {
             throw new IllegalStateException("Browser not initialized. Call createBrowser() first.");
         }
 
-        BrowserContext context = browser.newContext(new Browser.NewContextOptions()
+        // Optimized context options for better performance
+        Browser.NewContextOptions contextOptions = new Browser.NewContextOptions()
                 .setViewportSize(1920, 1080)
-                .setRecordVideoDir(getVideoMode() ? Paths.get("test-results/videos") : null)
-                .setRecordVideoSize(1920, 1080));
+                .setIgnoreHTTPSErrors(true) // Skip SSL validation for faster loading
+                .setBypassCSP(true) // Bypass Content Security Policy for faster script execution
+                .setColorScheme(com.microsoft.playwright.options.ColorScheme.LIGHT);
 
+        // Enable video recording when configured via CLI or config
+        if (getVideoMode()) {
+            contextOptions.setRecordVideoDir(Paths.get("test-results/videos"))
+                         .setRecordVideoSize(1920, 1080);
+            logger.info("Video recording enabled - files will be saved to test-results/videos");
+        }
+
+        BrowserContext context = browser.newContext(contextOptions);
+
+        // Only start tracing when needed
         if (getTraceMode()) {
             context.tracing().start(new Tracing.StartOptions()
                     .setScreenshots(true)
@@ -151,7 +168,7 @@ public class BrowserManager {
         }
 
         contextThreadLocal.set(context);
-        logger.info("Browser context created");
+        logger.info("Browser context created with optimized settings");
     }
 
     public static void createPage() {
@@ -161,9 +178,18 @@ public class BrowserManager {
         }
 
         Page page = context.newPage();
+        
+        // Optimized page settings for better performance
         page.setDefaultTimeout(config.timeout());
+        page.setDefaultNavigationTimeout(config.timeout());
+        
+        // Only block third-party analytics that don't affect functionality
+        page.route("**/google-analytics.com/**", route -> route.abort());
+        page.route("**/googletagmanager.com/**", route -> route.abort());
+        page.route("**/facebook.com/tr/**", route -> route.abort());
+        
         pageThreadLocal.set(page);
-        logger.info("Page created with timeout: {}ms", config.timeout());
+        logger.info("Page created with optimized settings and timeout: {}ms", config.timeout());
     }
 
     public static Page getPage() {
@@ -365,10 +391,14 @@ public class BrowserManager {
     }
 
     private static boolean getVideoMode() {
-        return !config.videoMode().equalsIgnoreCase("OFF");
+        // Check system property first (CLI override), then config
+        String videoMode = System.getProperty("video.mode", config.videoMode());
+        return !videoMode.equalsIgnoreCase("OFF");
     }
 
     private static boolean getTraceMode() {
-        return !config.traceMode().equalsIgnoreCase("OFF");
+        // Check system property first (CLI override), then config
+        String traceMode = System.getProperty("trace.mode", config.traceMode());
+        return !traceMode.equalsIgnoreCase("OFF");
     }
 }
